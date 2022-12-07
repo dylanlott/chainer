@@ -59,6 +59,20 @@ func TestBlockchain(t *testing.T) {
 	is.Equal(got, uint64(5))
 }
 
+func TestAppend(t *testing.T) {
+	is := is.New(t)
+
+	chain, ids := seedBlockchain(10)
+	chain.IncrementHeight()
+
+	is.Equal(len(chain.log), 1)
+	is.Equal(len(chain.buffer), 0)
+
+	amount := randomAmount()
+	chain.Set(ids[0], amount)
+	is.Equal(chain.buffer[0], tx{height: chain.height, balance: amount})
+}
+
 func TestSeed(t *testing.T) {
 	is := is.New(t)
 

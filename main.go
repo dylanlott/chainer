@@ -15,17 +15,31 @@ type tx struct {
 	balance uint64
 }
 
+// block holds a list of transactions and a height.
+// NB: this could be made into tx hashes to further decrease size
+type block struct {
+	height uint64
+	txs    []tx
+}
+
 // holds the current height and a map of users to tx slices
 type chainer struct {
 	balances map[string][]tx
 	height   uint64
+
+	// NB: Log is only attached to chainer for demonstration.
+	// It would be better served to be pulled out into its own
+	// collection layer behind an interface.
+	log    []block
+	buffer []tx
 }
 
 // initialize returns a new instantiated blockchain
 func initialize() *chainer {
 	return &chainer{
-		balances: map[string][]tx{},
 		height:   0,
+		balances: map[string][]tx{},
+		log:      []block{},
 	}
 }
 
@@ -41,6 +55,7 @@ func (b *chainer) Set(id string, balance uint64) {
 
 	v = append(v, newtx)
 	b.balances[id] = v
+	b.buffer = append(b.buffer, newtx)
 }
 
 // Get returns the balance at the given height.
@@ -69,4 +84,17 @@ func (b *chainer) Get(id string, height uint64) uint64 {
 // IncrementHeight will tick the height of the chain up by 1
 func (b *chainer) IncrementHeight() {
 	b.height++
+	b.append()
+}
+
+// append will add a block to the chain
+func (b *chainer) append() {
+	txlist := []tx{}
+	copy(txlist, b.buffer)
+	newblock := block{
+		height: b.height,
+		txs:    txlist,
+	}
+	b.log = append(b.log, newblock)
+	b.buffer = make([]tx, 0)
 }
