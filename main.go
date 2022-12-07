@@ -1,103 +1,72 @@
-/*
-# The Question
-
-A core concept in blockchains is the ability to store and access a historical record of account balances. Design a structure allows setting the current value and retrieving a historical value the latest value at a certain block height.
-
-**Example interface:**
-
-- `set(account, balance)`
-- `get(account, height)`
-- `increment_height()`
-
-**Example flow:**
-
-- `initialize` → height=0
-- `set(A, 1)`
-- `increment_height()`
-- `set(B, 2)`
-- `increment_height()`
-- `set(A, 3)`
-- `increment_height()`
-- `get(A, 0)` → returns 1
-- `get(B, 0)` → returns 0
-- `get(B, 1)` → returns 2
-- `get(A, 1)` → returns 1
-- `get(B, 2)` -> returns 2
-- `get(A, 2)` → returns  3
-*/
-
 package main
 
-import "log"
-
-// Block ...
-type Block struct {
-	balances map[string]uint64
-	current  uint64
+// Storage is the main interface for this layer
+type Storage interface {
+	Set(id string, balance uint64)
+	Get(id string, height uint64) uint64
+	IncrementHeight()
 }
 
-// Blockchain ...
-type Blockchain struct {
-	chain []Block
+var _ Storage = (*chainer)(nil)
+
+// tx holds an update to a balance at a given height
+type tx struct {
+	height  uint64
+	balance uint64
 }
 
-// Balances ..
-type Balances interface {
-	set(id string, balance uint64)
-	get(id string, height uint64) uint64
-	incrementHeight()
+// holds the current height and a map of users to tx slices
+type chainer struct {
+	balances map[string][]tx
+	height   uint64
 }
 
-var _ Balances = (*Blockchain)(nil)
-
-func initialize() *Blockchain {
-	return &Blockchain{
-		chain: []Block{
-			Block{
-				balances: map[string]uint64{},
-				current:  0,
-			},
-		},
+// initialize returns a new instantiated blockchain
+func initialize() *chainer {
+	return &chainer{
+		balances: map[string][]tx{},
+		height:   0,
 	}
 }
 
-func (b *Blockchain) set(id string, balance uint64) {
-	last := b.chain[len(b.chain)-1]
-	last.balances[id] = balance
+// Set adds a tx to the list at the current height
+func (b *chainer) Set(id string, balance uint64) {
+	newtx := tx{height: b.height, balance: balance}
+
+	v, ok := b.balances[id]
+	if !ok {
+		b.balances[id] = []tx{newtx}
+		return
+	}
+
+	v = append(v, newtx)
+	b.balances[id] = v
 }
 
-func (b *Blockchain) get(id string, height uint64) uint64 {
-	for _, block := range b.chain {
-		// log.Printf("found block: %+v", block)
-		if block.current == height {
-			log.Printf("found correct height: %+v", block)
-			bal, ok := block.balances[id]
-			if !ok {
-				return 0
-			}
-			// log.Printf("Found balance: %v", bal)
-			return bal
+// Get returns the balance at the given height.
+// If the height is greater than the block height, it uses
+// the current block height.
+func (b *chainer) Get(id string, height uint64) uint64 {
+	var selected int
+
+	txlist, ok := b.balances[id]
+	if !ok {
+		return 0
+	}
+
+	for idx, item := range txlist {
+		if item.height <= height {
+			selected = idx
+		}
+		if item.height > height {
+			break
 		}
 	}
-	return 0
+
+	return txlist[selected].balance
 }
 
-func (b *Blockchain) incrementHeight() {
-	last := b.chain[len(b.chain)-1]
-	next := last.current + 1
-
-	var newBalances = map[string]uint64{}
-	for k, v := range last.balances {
-		newBalances[k] = v
-	}
-
-	b.chain = append(b.chain, Block{
-		balances: newBalances,
-		current:  next,
-	})
-}
-
-func (b *Blockchain) height() uint64 {
-	last := b.chain[len(b.chain)-1]
-	return last.current
+// IncrementHeight will tick the height of the chain up by 1
+func (b *chainer) IncrementHeight() {
+	b.height++
 }
