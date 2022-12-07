@@ -1,7 +1,7 @@
 chainer ⛓️
 ==========
 
-chainer is an experimental storage engine for a linked list structure.
+chainer is an experimental transaction log.
 
 this could power a write ahead log in a database, store transactions for a blockchain, or any number of similar responsibilities.
 
