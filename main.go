@@ -1,13 +1,21 @@
 package main
 
-// Storage is the main interface for this layer
-type Storage interface {
+import "log"
+
+// Chainer is the main interface for this layer
+type Chainer interface {
 	Set(id string, balance uint64)
 	Get(id string, height uint64) uint64
 	IncrementHeight()
 }
 
-var _ Storage = (*chainer)(nil)
+func main() {
+	log.Printf("chainer reporting for duty - but you probably wanna use this as a library")
+	chain := initialize()
+	log.Printf("chain height at %d", chain.height)
+}
+
+var _ Chainer = (*chainer)(nil)
 
 // tx holds an update to a balance at a given height
 type tx struct {
